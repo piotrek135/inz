@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <title>Live Stream</title>
+</head>
+<body>
+	{% include 'navbar.html' %}
+	<div style="display: flex; justify-content: center; align-items: center; height: 100vh;">
+		<img src="{{ url_for('video')}}" alt="Live Stream" width="90%"/>
+	</div>
+</body>
+</html>

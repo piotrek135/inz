@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KarmnikApp</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.js"></script>
+</head>
+<body>
+    {% include 'navbar.html' %}
+
+    <div class="row">
+        <div class="column" style="margin-left: 15%; font-size: xx-large;">
+                <br>
+                Wybierz które ptaki dokarmiać:
+                <br>
+                <br>
+                {% for bird, value in birds_choices.items() %}
+                <input type="checkbox" id="{{ bird }}" {% if value == 1 %}checked{% endif %} data-bird="{{ bird }}">
+                {{ bird }}
+                <br>
+            {% endfor %}
+
+        </div>
+        <div class="column" style="text-align: center;">
+            <img id="pic" src="{{ url_for('static', filename='next_pic.jpg') }}" alt="Ptak">
+            <br>
+            <button class="dobrze" onclick="handleButton('dobrze')">Dobrze</button>
+            <button class="zlaEtykieta" onclick="handleButton('zlaEtykieta')">Zła etykieta</button>
+            <button class="brakPtaka" onclick="handleButton('brakPtaka')">Brak ptaka</button>
+        </div>
+      </div>
+
+    <div class="row">
+        <div class="column">
+            <canvas id="columnChart"></canvas>
+        </div>
+        <div class="column">
+            <canvas id="pieChart"></canvas>
+        </div>
+    </div>
+
+
+    <script>
+        var obraz = document.getElementById('pic');
+        obraz.src = obraz.src.split('?')[0] + '?' + new Date().getTime();
+        
+        var birdsChoices = {{ birds_choices|tojson|safe }};
+        var birdsPhotosStats = {{ pie_chart_data|tojson|safe }};
+        var birdsVisitHours = {{ birds_visit_hours|tojson|safe }};
+
+        // Funkcja do rysowania piechart
+        function drawPieChart() {
+            var ctx = document.getElementById('pieChart').getContext('2d');
+
+            if (window.myPieChart) {
+                window.myPieChart.destroy();
+            }
+
+            var data = {
+                labels: Object.keys(birdsPhotosStats),
+                datasets: [{
+                    data: Object.values(birdsPhotosStats),
+                    backgroundColor: [
+                        'rgba(255, 99, 132, 0.7)',
+                        'rgba(75, 192, 192, 0.7)',
+                        'rgba(255, 205, 86, 0.7)',
+                        'rgba(54, 162, 235, 0.7)',
+                    ],
+                }],
+            };
+
+            var options = {
+                responsive: true,
+                maintainAspectRatio: false,
+            };
+
+            window.myPieChart = new Chart(ctx, {
+                type: 'pie',
+                data: data,
+                options: options,
+            });
+        }
+        function drawColumnChart() {
+            var ctx = document.getElementById('columnChart').getContext('2d');
+            var data = {
+                labels: Object.keys(birdsVisitHours),
+                datasets: [{
+                    label: 'Liczba odwiedzin w godzinach',
+                    data: Object.values(birdsVisitHours),
+                    backgroundColor: 'rgba(75, 192, 192, 0.7)',
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 1
+                }]
+            };
+
+            var options = {
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            };
+
+            var myColumnChart = new Chart(ctx, {
+                type: 'bar',
+                data: data,
+                options: options
+            });
+        }
+
+
+        // Wywołaj funkcję rysującą piechart po załadowaniu strony
+        document.addEventListener('DOMContentLoaded', function() {
+            drawPieChart();
+            drawColumnChart();
+        });
+
+        
+    function handleButton(action) {
+        console.log('Akcja:', action);
+
+        fetch(`/${action}`, {
+            method: 'POST',
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                console.log(`Zdjęcie przeniesione do foldera ${action}`);
+                
+                if (action != 'dobrze'){
+                    //location.reload(true);
+                    updatePieChart();
+                }
+                
+                var obraz = document.getElementById('pic');
+                obraz.src = obraz.src.split('?')[0] + '?' + new Date().getTime();
+
+                    
+            } else {
+                console.error(`Błąd podczas przenoszenia zdjęcia: ${data.message}`);
+            }
+        })
+        .catch(error => console.error('Błąd fetch:', error));
+    }
+    
+    function updatePieChart() {
+        getDataForPieChart().then(newData => {
+            var ctx = document.getElementById('pieChart').getContext('2d');
+            window.myPieChart.data.labels = Object.keys(newData);
+            window.myPieChart.data.datasets[0].data = Object.values(newData);
+            window.myPieChart.update();
+        });
+    }
+    
+    function getDataForPieChart(){
+        return fetch('/get_pie_chart_data')
+        .then(response => {
+            if (!response.ok){
+                throw new Error('Http error! Status: ${response.status}');
+            }
+            return response.json();
+        })
+        .catch(error => {
+            console.error('Error fetching data for pie chart:', error.message);
+        });
+    }
+    
+    </script>
+
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>
